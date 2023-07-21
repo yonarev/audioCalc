@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="es">    
+    <head>  
+        <meta charset="UTF-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>AudioCalc</title>
+        <link rel="icon" href="./icono.png" type="image/x-icon">
+        <style>
+            *{
+                font-size: 5vw;
+            }
+            body {
+                font-family: Arial, sans-serif;
+                text-align: center;
+            }
+            button {
+                padding: 1vw 2vw;
+                background-color: #4CAF50;
+                color: white;
+                border: none;
+                cursor: pointer;
+                margin-bottom: 2vw;
+            }
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-bottom: 2vw;
+            }
+            th, td {
+                border: 1vw solid black;
+                padding: 1vw;
+            }
+            #tablaValores td {
+                text-align: right;
+            }
+            #total {
+                font-weight: bold;
+                margin-top: 1vw;
+            }
+        </style>
+        <script>
+            let suma = 0;
+            function activarReconocimientoVoz() {
+                const reconocimientoVoz = window.SpeechRecognition || window.webkitSpeechRecognition;
+                const reconocimiento = new reconocimientoVoz();
+                reconocimiento.lang = 'es-ES'; // Establece el idioma del reconocimiento de voz
+                reconocimiento.start();
+                reconocimiento.onresult = function(event) {
+                    const transcripcion = event.results[0][0].transcript;
+                    document.getElementById("transcripcion").innerHTML = "Transcripción: " + transcripcion;
+                    if (!isNaN(transcripcion)) {
+                    const valor = parseFloat(transcripcion);
+                    suma += valor;
+                    const fila = crearFila(valor);
+                    agregarBotonEliminar(fila);
+                    document.getElementById("tablaValores").appendChild(fila);
+                    actualizarTotalAcumulado();
+                    } else {
+                    alert("¡Entrada inválida! Inténtalo de nuevo.");
+                    }
+                }
+                reconocimiento.onerror = function(event) {
+                alert("Error en el reconocimiento de voz. Por favor, inténtalo de nuevo.");
+            }
+            }
+            function crearFila(valor) {
+                const fila = document.createElement("tr");
+
+                const columnaValor = document.createElement("td");
+                columnaValor.textContent = valor;
+                fila.appendChild(columnaValor);
+
+                const columnaTotalAcumulado = document.createElement("td");
+                columnaTotalAcumulado.textContent = formatCurrency(suma);
+                fila.appendChild(columnaTotalAcumulado);
+
+                return fila;
+            }
+            function agregarBotonEliminar(fila) {
+                const columnaAcciones = document.createElement("td");
+
+                const btnEliminar = document.createElement("button");
+                btnEliminar.textContent = "Eliminar";
+                btnEliminar.addEventListener("click", function() {
+                    const tablaValores = document.getElementById("tablaValores");
+                    const index = Array.from(tablaValores.rows).indexOf(fila);
+                    eliminarFila(index);
+                });
+
+                columnaAcciones.appendChild(btnEliminar);
+                fila.appendChild(columnaAcciones);
+            }
+            function eliminarFila(index) {
+                const tablaValores = document.getElementById("tablaValores");
+                const totalFilas = tablaValores.rows.length;
+                if (index >= 1 && index <= totalFilas - 1) {
+                    tablaValores.deleteRow(index);
+                    // Recalcular el total acumulado después de eliminar la fila
+                    suma = 0;
+                    const filas = tablaValores.rows;
+                    for (let i = 1; i < filas.length; i++) {
+                    const valor = parseFloat(filas[i].cells[0].textContent);
+                    suma += valor;
+                    filas[i].cells[1].textContent = formatCurrency(suma);
+                    }
+                    document.getElementById("total").innerHTML = "Total acumulado: " + formatCurrency(suma);
+                } else {
+                    console.error("El índice proporcionado está fuera del rango válido.");
+                }
+            }
+            function actualizarTotalAcumulado() {
+                const tablaValores = document.getElementById("tablaValores");
+                const filas = tablaValores.rows;
+                suma = 0;
+
+                for (let i = 1; i < filas.length; i++) {
+                    const valor = parseFloat(filas[i].cells[0].textContent);
+                    suma += valor;
+                    filas[i].cells[1].textContent = formatCurrency(suma);
+                }
+
+                document.getElementById("total").innerHTML = "Total acumulado: " + formatCurrency(suma);
+            }
+            function actualizarTabla(valor) {
+                const tabla = document.getElementById("tablaValores");
+                const fila = tabla.insertRow();
+                const celdaValor = fila.insertCell(0);
+                const celdaTotal = fila.insertCell(1);
+                celdaValor.innerHTML = formatCurrency(valor);
+                celdaTotal.innerHTML = formatCurrency(suma);
+            }
+            function formatCurrency(valor) {
+                return valor.toLocaleString('es-CL', { style: 'currency', currency: 'CLP' });
+            }
+            function grabaListaLocal() {
+                const tabla = document.getElementById("tablaValores");
+                if (tabla) {
+                    const filas = tabla.getElementsByTagName("tr");
+                    const listaValores = [];
+                    for (let i = 1; i < filas.length; i++) {
+                    const celda = filas[i].getElementsByTagName("td")[0];
+                    if (celda) {
+                        const valor = celda.textContent;
+                        listaValores.push(valor);
+                    }
+                    }
+                    localStorage.setItem("listaValores", JSON.stringify(listaValores));
+                    console.log("Valores guardados en local storage:", listaValores);
+                    despliegaMensaje("¡Valores guardados en local storage!");
+                } else {
+                    despliegaMensaje("¡No se han ingresado valores!");
+                    console.log("No se encontró la tabla");
+                }
+            }
+            function despliegaMensaje(msge) {
+                const mensajeElemento = document.getElementById("mensaje");
+                mensajeElemento.textContent = msge;
+                console.log(msge);
+            }
+            function reiniciarLista() {
+                const tabla = document.getElementById("tablaValores");
+                while (tabla.rows.length > 1) {
+                    tabla.deleteRow(1);
+                }
+                const totalElemento = document.getElementById("total");
+                totalElemento.textContent = "";
+            }
+            function grabaArchivoJson() {
+                const listaValores = localStorage.getItem("listaValores");
+                const blob = new Blob([listaValores], { type: "application/json" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = "listaValores.json";
+                a.click();
+                URL.revokeObjectURL(url);
+            }
+            function limpiarLocalStorage() {
+                localStorage.removeItem("listaValores");
+                console.log("El valor para la clave 'listaValores' ha sido eliminado de Local Storage");
+            }
+            function leeArchivoLista() {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.addEventListener('change', (event) => {
+                    const file = event.target.files[0];
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                    const contenidoArchivo = e.target.result;
+                    const listaValores = JSON.parse(contenidoArchivo);
+                    localStorage.setItem('listaValores', JSON.stringify(listaValores));
+
+                    // Llamamos a la función cargaTablaLocal() después de leer el archivo
+                    cargaTablaLocal();
+                    };
+                    reader.readAsText(file);
+                });
+                input.click();
+            }
+            function cargaTablaLocal() {
+                const tablaValores = document.getElementById("tablaValores");
+                const totalElemento = document.getElementById("total");
+                totalElemento.textContent = "";
+                const listaValores = localStorage.getItem("listaValores");
+
+                if (listaValores) {
+                    const valores = JSON.parse(listaValores);
+                    let totalAcumulado = 0; // Variable para almacenar el total acumulado
+
+                    while (tablaValores.rows.length > 1) {
+                    tablaValores.deleteRow(1);
+                    }
+
+                    if (Array.isArray(valores)) {
+                    valores.forEach((valor, index) => {
+                        const fila = document.createElement("tr");
+
+                        const columnaValor = document.createElement("td");
+                        columnaValor.textContent = valor;
+                        fila.appendChild(columnaValor);
+
+                        totalAcumulado += parseInt(valor); // Sumar el valor al total acumulado
+                        const columnaTotalAcumulado = document.createElement("td");
+                        columnaTotalAcumulado.textContent = formatCurrency(totalAcumulado);
+                        fila.appendChild(columnaTotalAcumulado);
+
+                        // Crear botón de eliminación y agregar evento onclick
+                        const btnEliminar = document.createElement("button");
+                        btnEliminar.textContent = "Eliminar";
+                        btnEliminar.addEventListener("click", () => {
+                        eliminarFila(index + 1); // Sumamos 1 al índice para tener en cuenta la fila del encabezado
+                        });
+
+                        const columnaAcciones = document.createElement("td");
+                        columnaAcciones.appendChild(btnEliminar);
+                        fila.appendChild(columnaAcciones);
+
+                        tablaValores.appendChild(fila);
+                    });
+
+                    totalElemento.textContent = "Total: " + formatCurrency(totalAcumulado);
+                    } else {
+                    console.error("Los datos almacenados en localStorage no son una matriz.");
+                    }
+                } else {
+                    totalElemento.textContent = "Total: 0";
+                }
+            }
+            function cargarArchivoYTabla() {
+                leeArchivoLista();
+                cargaTablaLocal();
+            }
+            function reinicia(){
+                limpiarLocalStorage()
+                reiniciarLista()
+            }
+            function guarda(){
+                grabaListaLocal()
+                grabaArchivoJson()
+            }
+            function actualizaTabla() {
+                const tablaValores = document.getElementById("tablaValores");
+                const filas = tablaValores.rows;
+                let totalAcumulado = 0;
+
+                for (let i = 1; i < filas.length; i++) {
+                    const valorCelda = parseInt(filas[i].cells[0].textContent);
+                    totalAcumulado += valorCelda;
+                    filas[i].cells[1].textContent = totalAcumulado;
+                }
+                
+                const totalElemento = document.getElementById("total");
+                totalElemento.textContent = "Total: " + totalAcumulado;
+            }
+        </script>
+    </head>
+<body onload="cargaTablaLocal()">
+    <h1>Suma de valores numéricos por voz</h1>
+    <button onclick="activarReconocimientoVoz()">Reconocimiento de voz</button>
+    <p id="transcripcion"></p>
+    <table id="tablaValores">
+        <tr>
+            <th>Valor</th>
+            <th>Total acumulado</th>
+            <th>Acciones</th> <!-- Nueva columna para el botón eliminar -->
+        </tr>
+    </table>
+    <p id="total"></p>
+    <!-- <button onclick="grabaListaLocal()">Guardar lista en local storage</button> -->
+    <button onclick="guarda()">Guardar lista</button>
+    <!-- <button onclick="limpiarLocalStorage()">Limpiar Local Storage</button> -->
+    <!-- <button id="reiniciarLista" onclick="reiniciarLista()" >Reiniciar lista en pantalla</button> -->
+    <button id="reinicia" onclick="reinicia()" >Reiniciar lista</button>
+    <!-- <button onclick="grabaArchivoJson()">Graba en Archivo Json</button>   -->
+    <!-- <button onclick="leeArchivoLista()">Lee Archivo Json y carga Local</button>   -->
+    <button onclick="cargarArchivoYTabla()">Lee Archivo</button>  
+    <!-- <button onclick="cargaTablaLocal()">llena tabla con valores de Local storage</button>   -->
+</body>
+<footer>
+    <p id="mensaje"></p>
+  </footer>
+</html>
